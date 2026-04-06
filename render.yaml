@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: crypto-ai-planner
+    runtime: docker
+    plan: free
+    autoDeploy: true

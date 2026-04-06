@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crypto AI Planner</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <span class="badge">Seriöser Krypto-Planer · lokale Demo-App</span>
+        <h1>Crypto AI Planner</h1>
+        <p>Diese App erstellt einen datenbasierten Investmentplan für Krypto, statt unrealistische Renditen zu versprechen. Die Entscheidungen sind nachvollziehbar: Marktregime, Liquidität, Momentum, Qualität und Risikoprofil fließen sichtbar in das Ergebnis ein.</p>
+      </div>
+      <div class="card" style="min-width:260px;">
+        <h3>App-Status</h3>
+        <div class="note">Version 1.0 · lokal lauffähig · API inklusive</div>
+        <ul class="list-tight">
+          <li>Web-Oberfläche</li>
+          <li>REST API</li>
+          <li>What-if Analyse</li>
+          <li>Docker-Setup</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2>Nutzerprofil</h2>
+          <form method="post" action="/">
+            <label>Kapital in EUR</label>
+            <input name="capital_eur" type="number" step="0.01" value="{{ plan.profile.capital_eur }}" required>
+
+            <label>Risikoprofil</label>
+            <select name="risk_level">
+              {% for rl in risk_levels %}
+              <option value="{{ rl.value }}" {% if plan.profile.risk_level.value == rl.value %}selected{% endif %}>{{ rl.value }}</option>
+              {% endfor %}
+            </select>
+
+            <label>Anlagehorizont in Monaten</label>
+            <input name="horizon_months" type="number" value="{{ plan.profile.horizon_months }}" required>
+
+            <label>Maximale Positionen</label>
+            <input name="max_positions" type="number" value="{{ plan.profile.max_positions }}" required>
+
+            <label>Tolerierter Max-Drawdown in %</label>
+            <input name="max_drawdown_tolerance_pct" type="number" step="0.1" value="{{ plan.profile.max_drawdown_tolerance_pct }}" required>
+
+            <button type="submit">Plan neu berechnen</button>
+          </form>
+          <div class="note">Das Modell ist absichtlich konservativ aufgebaut: Qualitätsfilter zuerst, Risiko danach, Hype zuletzt.</div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h2>So startest du die App</h2>
+          <div class="codebox">uvicorn app.main:app --reload</div>
+          <p class="note">Danach im Browser: <strong>http://127.0.0.1:8000</strong></p>
+          <div class="codebox">docker compose up --build</div>
+          <p class="note">Alternativ komplett per Docker.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="stats">
+          <div class="stat"><div class="k">Marktregime</div><div class="v">{{ plan.market_regime }}</div></div>
+          <div class="stat"><div class="k">Ø Score</div><div class="v">{{ dashboard.avg_score }}</div></div>
+          <div class="stat"><div class="k">Top Coin</div><div class="v">{{ dashboard.best_coin }}</div></div>
+          <div class="stat"><div class="k">Investierbar</div><div class="v">{{ dashboard.investable_eur }}€</div></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h2>Investmentplan</h2>
+            <span class="pill">Cash-Reserve: {{ plan.cash_buffer_pct }}%</span>
+          </div>
+          <p>{{ plan.summary }}</p>
+          <p class="muted">Marktheat: <strong>{{ dashboard.market_heat }}</strong> · Ø 30-Tage-Veränderung: <strong>{{ dashboard.avg_30d }}%</strong></p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Coin</th>
+                <th>Allokation</th>
+                <th>Einstieg</th>
+                <th>Gewinnregel</th>
+                <th>Risikoregel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in plan.positions %}
+              <tr>
+                <td><strong>{{ p.symbol }}</strong><br><span class="muted">{{ p.name }}</span></td>
+                <td><strong>{{ p.allocation_pct }}%</strong><br>{{ p.allocation_eur }} €</td>
+                <td>{{ p.entry_style }}</td>
+                <td>{{ p.take_profit_rule }}</td>
+                <td>{{ p.risk_rule }}</td>
+              </tr>
+              <tr>
+                <td colspan="5">
+                  <strong>Begründung:</strong>
+                  <ul class="list-tight">
+                    {% for reason in p.rationale %}<li>{{ reason }}</li>{% endfor %}
+                  </ul>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="two" style="margin-top:20px;">
+          <div class="card">
+            <h2>Coin-Scoring</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Coin</th>
+                  <th>Gesamt</th>
+                  <th>Momentum</th>
+                  <th>Qualität</th>
+                  <th>Risiko</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in scores %}
+                <tr>
+                  <td><strong>{{ s.symbol }}</strong><br><span class="muted">{{ s.name }}</span></td>
+                  <td>{{ s.total_score }}</td>
+                  <td>{{ s.momentum_score }}</td>
+                  <td>{{ s.quality_score }}</td>
+                  <td>{{ s.risk_score }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h2>Universum</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Coin</th>
+                  <th>30D</th>
+                  <th>RSI</th>
+                  <th>Liquidität</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in market_data %}
+                <tr>
+                  <td><strong>{{ c.symbol }}</strong><br><span class="muted">{{ c.name }}</span></td>
+                  <td class="{% if c.price_change_30d_pct >= 0 %}good{% else %}warn{% endif %}">{{ c.price_change_30d_pct }}%</td>
+                  <td>{{ c.rsi_14 }}</td>
+                  <td>{{ c.liquidity_score }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="two" style="margin-top:20px;">
+          <div class="card">
+            <h2>Portfolio-Regeln</h2>
+            <ul class="list-tight">
+              {% for rule in plan.portfolio_rules %}<li>{{ rule }}</li>{% endfor %}
+            </ul>
+          </div>
+          <div class="card">
+            <h2>Hinweise</h2>
+            <ul class="list-tight">
+              {% for note in plan.notes %}<li>{{ note }}</li>{% endfor %}
+            </ul>
+            {% if plan.rejected_symbols %}
+              <p class="note"><strong>Für dieses Profil ausgeschlossen:</strong> {{ plan.rejected_symbols | join(', ') }}</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">Wichtig: Die App ist lokal lauffähig und funktionsfähig, aber nicht von mir live gehostet oder im App Store veröffentlicht.</div>
+  </div>
+</body>
+</html>
