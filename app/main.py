@@ -20,7 +20,6 @@ app = FastAPI(title=settings.app_name, version=settings.app_version)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-
 class WhatIfRequest(BaseModel):
     symbol: str
     price_change_30d_pct: float
